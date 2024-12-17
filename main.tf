@@ -9,7 +9,7 @@ terraform {
 
 # Provider konfigurieren
 provider "aws" {
-  region = "us-west-2"  # Stelle sicher, dass die Region passt
+  region = "us-west-2"
 }
 
 # VPC erstellen
@@ -20,54 +20,57 @@ resource "aws_vpc" "vpc_docker" {
   }
 }
 
-# Subnetz erstellen mit Auto-Assign Public IPv4
+# Subnet in Availability Zone us-west-2a
 resource "aws_subnet" "docker_subnet" {
   vpc_id                  = aws_vpc.vpc_docker.id
   cidr_block              = "10.0.0.0/28"
   availability_zone       = "us-west-2a"
-  map_public_ip_on_launch = true  # Diese Zeile aktiviert die automatische Zuweisung einer Public IPv4-Adresse
+  map_public_ip_on_launch = true
+  tags = { Name = "docker-subnet" }
+}
 
-  tags = {
-    Name = "docker-subnet"
-  }
+# Subnet in Availability Zone us-west-2b
+resource "aws_subnet" "docker_subnet_2" {
+  vpc_id                  = aws_vpc.vpc_docker.id
+  cidr_block              = "10.0.1.0/28"
+  availability_zone       = "us-west-2b"
+  map_public_ip_on_launch = true
+  tags = { Name = "docker-subnet-2" }
 }
 
 # Internet-Gateway erstellen
 resource "aws_internet_gateway" "igw_docker" {
   vpc_id = aws_vpc.vpc_docker.id
-  tags = {
-    Name = "igw-docker"
-  }
+  tags = { Name = "igw-docker" }
 }
 
 # Route Table erstellen und Route hinzufügen
 resource "aws_route_table" "rt_docker" {
   vpc_id = aws_vpc.vpc_docker.id
-
   route {
     cidr_block = "0.0.0.0/0"
     gateway_id = aws_internet_gateway.igw_docker.id
   }
-
-  tags = {
-    Name = "docker-route-table"
-  }
+  tags = { Name = "docker-route-table" }
 }
 
-# Route Table mit Subnetz verknüpfen
+# Route Table mit Subnets verknüpfen
 resource "aws_route_table_association" "rta_docker" {
   subnet_id      = aws_subnet.docker_subnet.id
+  route_table_id = aws_route_table.rt_docker.id
+}
+
+resource "aws_route_table_association" "rta_docker_2" {
+  subnet_id      = aws_subnet.docker_subnet_2.id
   route_table_id = aws_route_table.rt_docker.id
 }
 
 # Security Group erstellen
 resource "aws_security_group" "docker_sg" {
   vpc_id = aws_vpc.vpc_docker.id
-  tags = {
-    Name = "docker-sg"
-  }
+  tags = { Name = "docker-sg" }
 
-  # SSH-Zugriff erlauben
+  # SSH-Zugriff
   ingress {
     from_port   = 22
     to_port     = 22
@@ -75,7 +78,7 @@ resource "aws_security_group" "docker_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # HTTP-Zugriff erlauben
+  # HTTP-Zugriff
   ingress {
     from_port   = 80
     to_port     = 80
@@ -83,24 +86,16 @@ resource "aws_security_group" "docker_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # MinIO Ports (9000 und 9002)
+  # MinIO Ports
   ingress {
     from_port   = 9000
     to_port     = 9000
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
-
   ingress {
     from_port   = 9001
     to_port     = 9001
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    from_port   = 9002
-    to_port     = 9002
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -111,32 +106,5 @@ resource "aws_security_group" "docker_sg" {
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-
-# EC2-Instanz erstellen
-resource "aws_instance" "docker_instance" {
-  ami           = "ami-061dd8b45bc7deb3d" # Amazon Linux 2 AMI
-  instance_type = "t2.micro"
-  subnet_id     = aws_subnet.docker_subnet.id
-  vpc_security_group_ids = [aws_security_group.docker_sg.id]
-  key_name      = "vockey"  # Stelle sicher, dass der Key-Pair existiert
-
-  user_data = <<-EOF
-              #!/bin/bash
-              sudo yum install -y httpd
-              sudo systemctl start httpd
-              sudo yum install -y docker
-              sudo systemctl start docker
-              sudo usermod -aG docker ec2-user
-              docker pull minio/minio
-              docker run -dp 9000:9000 -p 9001:9001 --name minio \
-                -e "MINIO_ROOT_USER=admin" \
-                -e "MINIO_ROOT_PASSWORD=password" \
-                minio/minio server /data --console-address ":9001"
-              EOF
-
-  tags = {
-    Name = "docker-minio"
   }
 }

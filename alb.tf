@@ -3,7 +3,10 @@ resource "aws_lb" "minio_alb" {
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.docker_sg.id]
-  subnets            = [aws_subnet.docker_subnet.id]
+  subnets            = [
+    aws_subnet.docker_subnet.id,
+    aws_subnet.docker_subnet_2.id
+  ]
 }
 
 resource "aws_lb_target_group" "minio_tg" {
