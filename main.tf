@@ -20,12 +20,13 @@ resource "aws_vpc" "vpc_docker" {
   }
 }
 
-# Subnetz erstellen
+# Subnetz erstellen mit Auto-Assign Public IPv4
 resource "aws_subnet" "docker_subnet" {
   vpc_id                  = aws_vpc.vpc_docker.id
   cidr_block              = "10.0.0.0/28"
   availability_zone       = "us-west-2a"
-  map_public_ip_on_launch = true
+  map_public_ip_on_launch = true  # Diese Zeile aktiviert die automatische Zuweisung einer Public IPv4-Adresse
+
   tags = {
     Name = "docker-subnet"
   }
@@ -82,10 +83,10 @@ resource "aws_security_group" "docker_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Custom TCP Port 9000-9001 erlauben
+  # Custom TCP Port 9002 erlauben
   ingress {
-    from_port   = 9000
-    to_port     = 9001
+    from_port   = 9002
+    to_port     = 9002
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -115,7 +116,7 @@ resource "aws_instance" "docker_instance" {
               sudo systemctl start docker
               sudo usermod -aG docker ec2-user
               docker pull minio/minio
-              docker run -d -p 9000:9000 -p 9001:9001 --name minio \
+              docker run -dp 9000:9000 -p 9001:9001 --name minio \
                 -e "MINIO_ROOT_USER=admin" \
                 -e "MINIO_ROOT_PASSWORD=password" \
                 minio/minio server /data --console-address ":9001"
