@@ -29,7 +29,7 @@ resource "aws_subnet" "docker_subnet" {
 # Subnet 2 erstellen
 resource "aws_subnet" "docker_subnet_2" {
   vpc_id                  = aws_vpc.vpc_docker.id
-  cidr_block              = "10.0.0.1/28" # Neuer IP-Bereich
+  cidr_block              = "10.0.16.0/28" # Neuer IP-Bereich
   availability_zone       = "us-west-2b"
   map_public_ip_on_launch = true
   tags = { Name = "docker-subnet-2" }
