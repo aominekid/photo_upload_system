@@ -1,24 +1,118 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Photo Upload and Gallery</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>MinIO Foto-Galerie</title>
 </head>
 <body>
-    <h1>Photo Upload and Gallery</h1>
+    <h1>MinIO Foto Upload & Galerie</h1>
 
-    <!-- Form zum Hochladen -->
-    <div>
+    <!-- Formular zum Hochladen -->
+    <form id="uploadForm">
         <input type="file" id="fileInput" />
-        <button onclick="uploadFile()">Upload File</button>
-    </div>
+        <button type="submit">Hochladen</button>
+    </form>
 
-    <!-- Galerie -->
-    <h2>Photo Gallery</h2>
+    <h2>Galerie</h2>
     <div id="gallery"></div>
 
-    <script src="app.js"></script>
+    <script>
+        const MINIO_URL = "http://<DEINE_EC2_IP>:9000";  // Ersetze mit deiner EC2 IP
+        const BUCKET_NAME = "wedding-photos";
+
+        // Hochladen einer Datei
+        async function uploadFile(event) {
+            event.preventDefault();
+            const fileInput = document.getElementById("fileInput");
+            const file = fileInput.files[0];
+
+            if (!file) {
+                alert("Bitte wähle eine Datei aus.");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("file", file);
+
+            const response = await fetch(${MINIO_URL}/${BUCKET_NAME}/${file.name}, {
+                method: "PUT",
+                body: file,
+                headers: {
+                    "Content-Type": file.type
+                }
+            });
+
+            if (response.ok) {
+                alert("Datei erfolgreich hochgeladen!");
+                displayGallery();
+            } else {
+                alert("Hochladen fehlgeschlagen.");
+            }
+        }
+
+        // Galerie anzeigen
+        async function displayGallery() {
+            const galleryDiv = document.getElementById("gallery");
+            galleryDiv.innerHTML = "";
+
+            try {
+                const response = await fetch(${MINIO_URL}/${BUCKET_NAME}/);
+                if (response.ok) {
+                    const xml = await response.text();
+                    const parser = new DOMParser();
+                    const xmlDoc = parser.parseFromString(xml, "application/xml");
+                    const contents = xmlDoc.getElementsByTagName("Contents");
+
+                    for (let i = 0; i < contents.length; i++) {
+                        const fileName = contents[i].getElementsByTagName("Key")[0].textContent;
+                        const fileUrl = ${MINIO_URL}/${BUCKET_NAME}/${fileName};
+
+                        const imgElement = document.createElement("img");
+                        imgElement.src = fileUrl;
+                        imgElement.alt = fileName;
+                        imgElement.style = "width: 200px; margin: 10px; display: block;";
+
+                        const downloadButton = document.createElement("button");
+                        downloadButton.textContent = "Herunterladen";
+                        downloadButton.onclick = () => downloadFile(fileUrl, fileName);
+
+                        galleryDiv.appendChild(imgElement);
+                        galleryDiv.appendChild(downloadButton);
+                    }
+                }
+            } catch (error) {
+                console.error("Fehler beim Abrufen der Galerie:", error);
+            }
+        }
+
+        // Datei herunterladen
+        async function downloadFile(fileUrl, fileName) {
+            try {
+                const response = await fetch(fileUrl);
+                if (!response.ok) {
+                    throw new Error("Fehler beim Abrufen der Datei.");
+                }
+
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = fileName;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            } catch (error) {
+                console.error("Fehler beim Herunterladen der Datei:", error);
+            }
+        }
+
+        // Beim Laden der Seite die Galerie anzeigen
+        displayGallery();
+
+        // Event-Listener für Upload
+        document.getElementById("uploadForm").addEventListener("submit", uploadFile);
+    </script>
 </body>
 </html>
