@@ -1,6 +1,6 @@
 resource "aws_launch_template" "minio_lt" {
   name_prefix   = "minio-lt-"
-  image_id      = "ami-061dd8b45bc7deb3d"
+  image_id      = "ami-061dd8b45bc7deb3d" # Amazon Linux 2
   instance_type = "t2.micro"
   key_name      = "vockey"
 

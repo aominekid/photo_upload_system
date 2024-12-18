@@ -7,20 +7,17 @@ terraform {
   }
 }
 
-# Provider konfigurieren
 provider "aws" {
-  region = "us-west-2"
+  region = "us-west-2"  # Stelle sicher, dass die Region passt
 }
 
 # VPC erstellen
 resource "aws_vpc" "vpc_docker" {
   cidr_block = "10.0.0.0/27"
-  tags = {
-    Name = "vpc-docker"
-  }
+  tags = { Name = "vpc-docker" }
 }
 
-# Subnet in Availability Zone us-west-2a
+# Subnet 1 erstellen
 resource "aws_subnet" "docker_subnet" {
   vpc_id                  = aws_vpc.vpc_docker.id
   cidr_block              = "10.0.0.0/28"
@@ -29,28 +26,30 @@ resource "aws_subnet" "docker_subnet" {
   tags = { Name = "docker-subnet" }
 }
 
-# Subnet in Availability Zone us-west-2b
+# Subnet 2 erstellen
 resource "aws_subnet" "docker_subnet_2" {
   vpc_id                  = aws_vpc.vpc_docker.id
-  cidr_block              = "10.0.0.16/28"
+  cidr_block              = "10.0.1.0/28"
   availability_zone       = "us-west-2b"
   map_public_ip_on_launch = true
   tags = { Name = "docker-subnet-2" }
 }
 
-# Internet-Gateway erstellen
+# Internet Gateway erstellen
 resource "aws_internet_gateway" "igw_docker" {
   vpc_id = aws_vpc.vpc_docker.id
   tags = { Name = "igw-docker" }
 }
 
-# Route Table erstellen und Route hinzufügen
+# Route Table erstellen
 resource "aws_route_table" "rt_docker" {
   vpc_id = aws_vpc.vpc_docker.id
+
   route {
     cidr_block = "0.0.0.0/0"
     gateway_id = aws_internet_gateway.igw_docker.id
   }
+
   tags = { Name = "docker-route-table" }
 }
 
@@ -70,7 +69,6 @@ resource "aws_security_group" "docker_sg" {
   vpc_id = aws_vpc.vpc_docker.id
   tags = { Name = "docker-sg" }
 
-  # SSH-Zugriff
   ingress {
     from_port   = 22
     to_port     = 22
@@ -78,7 +76,6 @@ resource "aws_security_group" "docker_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # HTTP-Zugriff
   ingress {
     from_port   = 80
     to_port     = 80
@@ -86,13 +83,13 @@ resource "aws_security_group" "docker_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # MinIO Ports
   ingress {
     from_port   = 9000
     to_port     = 9000
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
   ingress {
     from_port   = 9001
     to_port     = 9001
@@ -100,7 +97,6 @@ resource "aws_security_group" "docker_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Alle ausgehenden Verbindungen erlauben
   egress {
     from_port   = 0
     to_port     = 0
