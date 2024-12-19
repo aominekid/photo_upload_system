@@ -35,7 +35,7 @@
             const formData = new FormData();
             formData.append("file", file);
 
-            const response = await fetch(${MINIO_URL}/${BUCKET_NAME}/${file.name}, {
+            const response = await fetch(`${MINIO_URL}/${BUCKET_NAME}/${file.name}`, {
                 method: "PUT",
                 body: file,
                 headers: {
@@ -57,7 +57,7 @@
             galleryDiv.innerHTML = "";
 
             try {
-                const response = await fetch(${MINIO_URL}/${BUCKET_NAME}/);
+                const response = await fetch(`${MINIO_URL}/${BUCKET_NAME}/`);
                 if (response.ok) {
                     const xml = await response.text();
                     const parser = new DOMParser();
@@ -66,7 +66,7 @@
 
                     for (let i = 0; i < contents.length; i++) {
                         const fileName = contents[i].getElementsByTagName("Key")[0].textContent;
-                        const fileUrl = ${MINIO_URL}/${BUCKET_NAME}/${fileName};
+                        const fileUrl = `${MINIO_URL}/${BUCKET_NAME}/${fileName}`;
 
                         const imgElement = document.createElement("img");
                         imgElement.src = fileUrl;
