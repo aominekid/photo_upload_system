@@ -10,8 +10,8 @@ resource "aws_launch_template" "minio_lt" {
               sudo systemctl start docker
               sudo usermod -aG docker ec2-user
               docker run -dp 9000:9000 -p 9001:9001 --name minio \
-                -e MINIO_ROOT_USER="admin" \
-                -e MINIO_ROOT_PASSWORD="password" \
+                -e "MINIO_ROOT_USER=admin" \
+                -e "MINIO_ROOT_PASSWORD=password" \
                 minio/minio server /data --console-address ":9001"
               EOF
   )
